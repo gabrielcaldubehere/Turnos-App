@@ -1,10 +1,11 @@
-import "./App.css";
+import AppLayout from "./layouts/AppLayout";
+import DashboardPage from "./pages/DashboardPage";
 
 function App() {
   return (
-    <main className="min-h-screen bg-slate-100 flex items-center justify-center">
-      <h1 className="text-4xl font-bold text-slate-900">Turnos AI</h1>
-    </main>
+    <AppLayout>
+      <DashboardPage />
+    </AppLayout>
   );
 }
 
