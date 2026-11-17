@@ -1,76 +1,15 @@
+import { useEffect, useState } from "react";
+import StatusBadge from "../components/common/StatusBadge";
 import StatCard from "../components/dashboard/StatCard";
 import Icon, { type IconName } from "../components/ui/Icon";
+import {
+  getAppointments,
+  getDashboardStats,
+} from "../services/appointmentService";
+import type { Appointment, DashboardStats } from "../types/appointment";
+import { formatCurrency, formatDate } from "../utils/format";
 
-type AppointmentStatus = "pendiente" | "confirmado" | "cancelado";
-
-type RecentAppointment = {
-  id: number;
-  client: string;
-  service: string;
-  professional: string;
-  time: string;
-  status: AppointmentStatus;
-};
-
-const metrics: { label: string; value: number; hint: string; icon: IconName }[] = [
-  { label: "Turnos de hoy", value: 5, hint: "Agenda del día", icon: "calendar" },
-  { label: "Clientes activos", value: 12, hint: "Este mes", icon: "users" },
-  {
-    label: "Turnos pendientes",
-    value: 3,
-    hint: "Requieren confirmación",
-    icon: "clock",
-  },
-  {
-    label: "Servicios disponibles",
-    value: 8,
-    hint: "Catálogo activo",
-    icon: "sparkles",
-  },
-];
-
-const recentAppointments: RecentAppointment[] = [
-  {
-    id: 1,
-    client: "María González",
-    service: "Limpieza facial",
-    professional: "Ana Ruiz",
-    time: "09:00",
-    status: "confirmado",
-  },
-  {
-    id: 2,
-    client: "Carlos Rodríguez",
-    service: "Corte y peinado",
-    professional: "Lucía Torres",
-    time: "11:30",
-    status: "pendiente",
-  },
-  {
-    id: 3,
-    client: "Sofía Martínez",
-    service: "Manicura",
-    professional: "Ana Ruiz",
-    time: "16:00",
-    status: "cancelado",
-  },
-  {
-    id: 4,
-    client: "Lucía Fernández",
-    service: "Masaje relajante",
-    professional: "Lucía Torres",
-    time: "18:15",
-    status: "confirmado",
-  },
-];
-
-const statusBadge: Record<AppointmentStatus, string> = {
-  pendiente: "badge-pending",
-  confirmado: "badge-confirmed",
-  cancelado: "badge-cancelled",
-};
-
-const getInitials = (name: string) =>
+const getInitials = (name: string): string =>
   name
     .split(" ")
     .map((part) => part[0])
@@ -79,17 +18,89 @@ const getInitials = (name: string) =>
     .toUpperCase();
 
 function DashboardPage() {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentAppointments, setRecentAppointments] = useState<Appointment[]>(
+    [],
+  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    Promise.all([getDashboardStats(), getAppointments()])
+      .then(([statsData, appointmentsData]) => {
+        if (!active) return;
+        setStats(statsData);
+        setRecentAppointments(
+          [...appointmentsData]
+            .sort((a, b) =>
+              `${b.date}${b.time}`.localeCompare(`${a.date}${a.time}`),
+            )
+            .slice(0, 4),
+        );
+      })
+      .catch(() => {
+        if (active) setError("No se pudo cargar el resumen del panel.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const metrics: {
+    label: string;
+    value: string | number;
+    hint: string;
+    icon: IconName;
+  }[] = [
+    {
+      label: "Turnos de hoy",
+      value: stats?.todayAppointments ?? "—",
+      hint: "Agenda del día",
+      icon: "calendar",
+    },
+    {
+      label: "Confirmados",
+      value: stats?.confirmedAppointments ?? "—",
+      hint: "Listos para atender",
+      icon: "check",
+    },
+    {
+      label: "Pendientes",
+      value: stats?.pendingAppointments ?? "—",
+      hint: "Requieren confirmación",
+      icon: "clock",
+    },
+    {
+      label: "Ingresos estimados",
+      value: stats ? formatCurrency(stats.estimatedRevenue) : "—",
+      hint: "Confirmados y completados",
+      icon: "wallet",
+    },
+  ];
+
   return (
     <section className="space-y-8">
       <header>
         <p className="eyebrow">Resumen general</p>
         <h2 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-900">
-          Buen día
+          Bienvenido de nuevo
         </h2>
         <p className="mt-2 text-sm text-zinc-500">
-          Gestioná tus turnos y mantené tu agenda organizada.
+          Mirá cómo viene tu agenda y gestioná los turnos pendientes.
         </p>
       </header>
+
+      {error && (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-700">
+          {error}
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
@@ -107,10 +118,10 @@ function DashboardPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-5 py-4">
           <div>
             <h3 className="text-base font-semibold text-zinc-900">
-              Turnos recientes
+              Últimos turnos
             </h3>
             <p className="mt-1 text-sm text-zinc-500">
-              Últimas solicitudes registradas en tu agenda.
+              Reservas más recientes de tu agenda.
             </p>
           </div>
           <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-600">
@@ -118,38 +129,45 @@ function DashboardPage() {
           </span>
         </div>
 
-        <ul className="divide-y divide-zinc-100">
-          {recentAppointments.map((appointment) => (
-            <li
-              key={appointment.id}
-              className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-zinc-50/70 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sage-500/10 text-sm font-semibold text-sage-700">
-                  {getInitials(appointment.client)}
-                </span>
-                <div>
-                  <p className="text-sm font-medium text-zinc-900">
-                    {appointment.client}
-                  </p>
-                  <p className="text-xs text-zinc-500">
-                    {appointment.service} · {appointment.professional}
-                  </p>
+        {loading ? (
+          <div className="flex items-center justify-center gap-3 px-5 py-10 text-sm text-zinc-500">
+            <span
+              className="h-4 w-4 animate-spin rounded-full border-2 border-sage-500 border-t-transparent"
+              aria-hidden="true"
+            />
+            Cargando resumen...
+          </div>
+        ) : (
+          <ul className="divide-y divide-zinc-100">
+            {recentAppointments.map((appointment) => (
+              <li
+                key={appointment.id}
+                className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-zinc-50/70 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sage-500/10 text-sm font-semibold text-sage-700">
+                    {getInitials(appointment.clientName)}
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium text-zinc-900">
+                      {appointment.clientName}
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      {appointment.serviceName} · {appointment.professionalName}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-3 sm:justify-end">
-                <span className="text-sm tabular-nums text-zinc-600">
-                  {appointment.time}
-                </span>
-                <span className={statusBadge[appointment.status]}>
-                  {appointment.status.charAt(0).toUpperCase() +
-                    appointment.status.slice(1)}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
+                <div className="flex items-center gap-3 sm:justify-end">
+                  <span className="text-xs tabular-nums text-zinc-500">
+                    {formatDate(appointment.date)} · {appointment.time}
+                  </span>
+                  <StatusBadge status={appointment.status} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   );

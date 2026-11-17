@@ -46,3 +46,7 @@
 @utility badge-cancelled {
   @apply inline-flex items-center rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-200;
 }
+
+@utility badge-completed {
+  @apply inline-flex items-center rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 ring-1 ring-sky-200;
+}

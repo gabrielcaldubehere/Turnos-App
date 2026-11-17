@@ -8,7 +8,9 @@ export type IconName =
   | "services"
   | "settings"
   | "clock"
-  | "sparkles";
+  | "sparkles"
+  | "check"
+  | "wallet";
 
 type IconProps = {
   name: IconName;
@@ -66,6 +68,13 @@ const iconPaths: Record<IconName, ReactNode> = {
     <>
       <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8" />
       <circle cx="12" cy="12" r="2" />
+    </>
+  ),
+  check: <path d="m5 12 4 4L19 6" />,
+  wallet: (
+    <>
+      <rect x="3" y="6" width="18" height="13" rx="2" />
+      <path d="M16 12h3M3 9h18" />
     </>
   ),
 };

@@ -1,50 +1,55 @@
+import { useEffect, useState } from "react";
+import StatusBadge from "../components/common/StatusBadge";
 import Icon from "../components/ui/Icon";
-
-type AppointmentStatus = "pendiente" | "confirmado" | "cancelado";
-
-type Appointment = {
-  id: number;
-  time: string;
-  client: string;
-  professional: string;
-  service: string;
-  status: AppointmentStatus;
-};
-
-const appointments: Appointment[] = [
-  {
-    id: 1,
-    time: "09:00",
-    client: "María González",
-    professional: "Ana Ruiz",
-    service: "Limpieza facial",
-    status: "confirmado",
-  },
-  {
-    id: 2,
-    time: "11:30",
-    client: "Carlos Rodríguez",
-    professional: "Lucía Torres",
-    service: "Corte y peinado",
-    status: "pendiente",
-  },
-  {
-    id: 3,
-    time: "16:00",
-    client: "Sofía Martínez",
-    professional: "Ana Ruiz",
-    service: "Manicura",
-    status: "cancelado",
-  },
-];
-
-const statusBadge: Record<AppointmentStatus, string> = {
-  pendiente: "badge-pending",
-  confirmado: "badge-confirmed",
-  cancelado: "badge-cancelled",
-};
+import {
+  getAppointments,
+  updateAppointmentStatus,
+} from "../services/appointmentService";
+import type { Appointment } from "../types/appointment";
+import { formatCurrency, formatDate } from "../utils/format";
 
 function AppointmentsPage() {
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    getAppointments()
+      .then((data) => {
+        if (active) setAppointments(data);
+      })
+      .catch(() => {
+        if (active) setError("No se pudieron cargar los turnos.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleConfirm = async (id: string) => {
+    setUpdatingId(id);
+    setError(null);
+    try {
+      const updated = await updateAppointmentStatus(id, "confirmed");
+      setAppointments((current) =>
+        current.map((appointment) =>
+          appointment.id === updated.id ? updated : appointment,
+        ),
+      );
+    } catch {
+      setError("No se pudo actualizar el turno.");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   return (
     <section className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -63,50 +68,85 @@ function AppointmentsPage() {
         </span>
       </header>
 
-      <div className="surface overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-zinc-100 bg-zinc-50/70 text-xs uppercase tracking-wide text-zinc-500">
-            <tr>
-              <th scope="col" className="px-5 py-3 font-medium">Horario</th>
-              <th scope="col" className="px-5 py-3 font-medium">Cliente</th>
-              <th scope="col" className="px-5 py-3 font-medium">Profesional</th>
-              <th scope="col" className="px-5 py-3 font-medium">Servicio</th>
-              <th scope="col" className="px-5 py-3 font-medium">Estado</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100">
-            {appointments.map((appointment) => (
-              <tr
-                key={appointment.id}
-                className="transition-colors hover:bg-zinc-50/70"
-              >
-                <td className="whitespace-nowrap px-5 py-4 font-medium tabular-nums text-zinc-900">
-                  {appointment.time}
-                </td>
-                <td className="whitespace-nowrap px-5 py-4 text-zinc-700">
-                  {appointment.client}
-                </td>
-                <td className="whitespace-nowrap px-5 py-4 text-zinc-700">
-                  {appointment.professional}
-                </td>
-                <td className="whitespace-nowrap px-5 py-4 text-zinc-700">
-                  {appointment.service}
-                </td>
-                <td className="px-5 py-4">
-                  <span className={statusBadge[appointment.status]}>
-                    {appointment.status.charAt(0).toUpperCase() +
-                      appointment.status.slice(1)}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {error && (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-700">
+          {error}
+        </p>
+      )}
 
-      <p className="text-xs text-zinc-400">
-        Vista provisional: los datos se conectarán al backend en el siguiente sprint.
-      </p>
+      {loading ? (
+        <div className="surface flex items-center justify-center gap-3 px-5 py-12 text-sm text-zinc-500">
+          <span
+            className="h-4 w-4 animate-spin rounded-full border-2 border-sage-500 border-t-transparent"
+            aria-hidden="true"
+          />
+          Cargando turnos...
+        </div>
+      ) : (
+        <div className="surface overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-zinc-100 bg-zinc-50/70 text-xs uppercase tracking-wide text-zinc-500">
+              <tr>
+                <th scope="col" className="px-5 py-3 font-medium">Horario</th>
+                <th scope="col" className="px-5 py-3 font-medium">Fecha</th>
+                <th scope="col" className="px-5 py-3 font-medium">Cliente</th>
+                <th scope="col" className="px-5 py-3 font-medium">Profesional</th>
+                <th scope="col" className="px-5 py-3 font-medium">Servicio</th>
+                <th scope="col" className="px-5 py-3 font-medium">Precio</th>
+                <th scope="col" className="px-5 py-3 font-medium">Estado</th>
+                <th scope="col" className="px-5 py-3 font-medium">Acción</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {appointments.map((appointment) => (
+                <tr
+                  key={appointment.id}
+                  className="transition-colors hover:bg-zinc-50/70"
+                >
+                  <td className="whitespace-nowrap px-5 py-4 font-medium tabular-nums text-zinc-900">
+                    {appointment.time}
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-4 text-zinc-500">
+                    {formatDate(appointment.date)}
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-4 text-zinc-700">
+                    {appointment.clientName}
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-4 text-zinc-700">
+                    {appointment.professionalName}
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-4 text-zinc-700">
+                    {appointment.serviceName}
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-4 tabular-nums text-zinc-700">
+                    {formatCurrency(appointment.price)}
+                  </td>
+                  <td className="px-5 py-4">
+                    <StatusBadge status={appointment.status} />
+                  </td>
+                  <td className="px-5 py-4">
+                    {appointment.status === "pending" ? (
+                      <button
+                        type="button"
+                        onClick={() => handleConfirm(appointment.id)}
+                        disabled={updatingId === appointment.id}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-sage-500/10 px-3 py-1.5 text-xs font-semibold text-sage-700 transition-colors hover:bg-sage-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Icon name="check" className="h-3.5 w-3.5" />
+                        {updatingId === appointment.id
+                          ? "Confirmando..."
+                          : "Confirmar"}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-zinc-300">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }
