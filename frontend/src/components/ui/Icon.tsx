@@ -12,7 +12,8 @@ export type IconName =
   | "check"
   | "wallet"
   | "plus"
-  | "close";
+  | "close"
+  | "search";
 
 type IconProps = {
   name: IconName;
@@ -81,6 +82,12 @@ const iconPaths: Record<IconName, ReactNode> = {
   ),
   plus: <path d="M12 5v14M5 12h14" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,
+  search: (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </>
+  ),
 };
 
 function Icon({ name, className = "h-5 w-5" }: IconProps) {

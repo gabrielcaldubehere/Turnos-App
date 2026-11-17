@@ -36,17 +36,17 @@
 }
 
 @utility badge-pending {
-  @apply inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200;
+  @apply inline-flex items-center gap-1.5 rounded-full bg-amber-50/80 px-2.5 py-1 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-200/80;
 }
 
 @utility badge-confirmed {
-  @apply inline-flex items-center rounded-full bg-sage-500/10 px-2.5 py-1 text-xs font-medium text-sage-700 ring-1 ring-sage-500/20;
+  @apply inline-flex items-center gap-1.5 rounded-full bg-sage-50 px-2.5 py-1 text-xs font-medium text-sage-700 ring-1 ring-inset ring-sage-200;
 }
 
 @utility badge-cancelled {
-  @apply inline-flex items-center rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-200;
+  @apply inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 ring-1 ring-inset ring-rose-200/80;
 }
 
 @utility badge-completed {
-  @apply inline-flex items-center rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 ring-1 ring-sky-200;
+  @apply inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 ring-1 ring-inset ring-zinc-200;
 }
