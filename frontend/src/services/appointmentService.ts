@@ -2,9 +2,15 @@ import type {
   Appointment,
   AppointmentStatus,
   DashboardStats,
+  ServiceOption,
 } from "../types/appointment";
 
-const MOCK_LATENCY_MS = 400;
+const API_URL = "http://localhost:8000/api";
+const JSON_HEADERS: HeadersInit = { "Content-Type": "application/json" };
+
+type ApiErrorBody = {
+  detail?: string | { msg?: string }[];
+};
 
 const formatDate = (offsetDays: number): string => {
   const date = new Date();
@@ -15,153 +21,106 @@ const formatDate = (offsetDays: number): string => {
   return `${year}-${month}-${day}`;
 };
 
-let appointments: Appointment[] = [
-  {
-    id: "apt-1001",
-    clientName: "María González",
-    clientPhone: "+54 9 11 5555-0101",
-    professionalName: "Ana Ruiz",
-    serviceName: "Limpieza facial",
-    date: formatDate(0),
-    time: "09:00",
-    status: "confirmed",
-    price: 45000,
-    notes: "Prefiere atención en horario de mañana.",
-  },
-  {
-    id: "apt-1002",
-    clientName: "Carlos Rodríguez",
-    clientPhone: "+54 9 11 5555-0102",
-    professionalName: "Lucía Torres",
-    serviceName: "Corte y peinado",
-    date: formatDate(0),
-    time: "11:30",
-    status: "pending",
-    price: 38000,
-  },
-  {
-    id: "apt-1003",
-    clientName: "Sofía Martínez",
-    clientPhone: "+54 9 11 5555-0103",
-    professionalName: "Ana Ruiz",
-    serviceName: "Manicura",
-    date: formatDate(0),
-    time: "16:00",
-    status: "cancelled",
-    price: 32000,
-    notes: "Canceló por motivos personales.",
-  },
-  {
-    id: "apt-1004",
-    clientName: "Lucía Fernández",
-    clientPhone: "+54 9 11 5555-0104",
-    professionalName: "Lucía Torres",
-    serviceName: "Masaje relajante",
-    date: formatDate(0),
-    time: "18:15",
-    status: "confirmed",
-    price: 62000,
-  },
-  {
-    id: "apt-1005",
-    clientName: "Diego López",
-    clientPhone: "+54 9 11 5555-0105",
-    professionalName: "Ana Ruiz",
-    serviceName: "Pedicura",
-    date: formatDate(-1),
-    time: "15:00",
-    status: "completed",
-    price: 34000,
-  },
-  {
-    id: "apt-1006",
-    clientName: "Valentina Rossi",
-    clientPhone: "+54 9 11 5555-0106",
-    professionalName: "Lucía Torres",
-    serviceName: "Tratamiento capilar",
-    date: formatDate(1),
-    time: "10:00",
-    status: "pending",
-    price: 55000,
-    notes: "Primera visita al salón.",
-  },
-  {
-    id: "apt-1007",
-    clientName: "Martín Silva",
-    clientPhone: "+54 9 11 5555-0107",
-    professionalName: "Ana Ruiz",
-    serviceName: "Limpieza facial",
-    date: formatDate(1),
-    time: "12:30",
-    status: "confirmed",
-    price: 45000,
-  },
-  {
-    id: "apt-1008",
-    clientName: "Camila Torres",
-    clientPhone: "+54 9 11 5555-0108",
-    professionalName: "Lucía Torres",
-    serviceName: "Depilación",
-    date: formatDate(3),
-    time: "17:00",
-    status: "confirmed",
-    price: 41000,
-  },
-];
+export const getTodayDate = (): string => formatDate(0);
 
-const delay = (milliseconds: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, milliseconds));
+const getErrorMessage = async (response: Response): Promise<string> => {
+  try {
+    const body = (await response.json()) as ApiErrorBody;
+    if (typeof body.detail === "string") return body.detail;
+    if (Array.isArray(body.detail) && body.detail[0]?.msg) {
+      return body.detail[0].msg;
+    }
+  } catch {
+    return `Error ${response.status} al consultar la API.`;
+  }
 
-let idSequence = 0;
+  return `Error ${response.status} al consultar la API.`;
+};
 
-const copyAppointment = (appointment: Appointment): Appointment => ({
-  ...appointment,
-});
+async function request<T>(
+  path: string,
+  init?: RequestInit,
+  expectedStatus?: number,
+): Promise<T> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_URL}${path}`, init);
+  } catch {
+    throw new Error(
+      "No se pudo conectar con el backend. Verificá que FastAPI esté corriendo en localhost:8000.",
+    );
+  }
+
+  if (
+    !response.ok ||
+    (expectedStatus !== undefined && response.status !== expectedStatus)
+  ) {
+    throw new Error(await getErrorMessage(response));
+  }
+
+  return (await response.json()) as T;
+}
+
+export async function getServices(): Promise<ServiceOption[]> {
+  return request<ServiceOption[]>("/services");
+}
 
 export async function getAppointments(): Promise<Appointment[]> {
-  await delay(MOCK_LATENCY_MS);
-  return appointments.map(copyAppointment);
+  return request<Appointment[]>("/appointments");
+}
+
+export async function createAppointment(
+  newAppointmentData: Omit<Appointment, "id" | "createdAt">,
+): Promise<Appointment> {
+  return request<Appointment>(
+    "/appointments",
+    {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify(newAppointmentData),
+    },
+    201,
+  );
 }
 
 export async function updateAppointmentStatus(
   id: string,
   status: AppointmentStatus,
 ): Promise<Appointment> {
-  await delay(MOCK_LATENCY_MS);
-
-  const existing = appointments.find((appointment) => appointment.id === id);
-  if (!existing) {
-    throw new Error(`No se encontró el turno con id "${id}"`);
-  }
-
-  const updated: Appointment = { ...existing, status };
-  appointments = appointments.map((appointment) =>
-    appointment.id === id ? updated : appointment,
+  return request<Appointment>(
+    `/appointments/${encodeURIComponent(id)}/status`,
+    {
+      method: "PATCH",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ status }),
+    },
   );
-
-  return copyAppointment(updated);
 }
 
-export async function createAppointment(
-  newAppointmentData: Omit<Appointment, "id" | "createdAt">,
-): Promise<Appointment> {
-  await delay(MOCK_LATENCY_MS);
+export async function getAvailableSlots(date: string): Promise<string[]> {
+  const appointments = await getAppointments();
 
-  idSequence += 1;
-  const created: Appointment = {
-    ...newAppointmentData,
-    id: `apt-${Date.now().toString()}-${idSequence}`,
-    createdAt: new Date().toISOString(),
-  };
+  const occupiedHours = new Set(
+    appointments
+      .filter(
+        (appointment) =>
+          appointment.date === date && appointment.status !== "cancelled",
+      )
+      .map((appointment) => appointment.time.slice(0, 2)),
+  );
 
-  appointments = [...appointments, created];
+  const slots: string[] = [];
+  for (let hour = 9; hour <= 18; hour += 1) {
+    const hourLabel = String(hour).padStart(2, "0");
+    if (!occupiedHours.has(hourLabel)) slots.push(`${hourLabel}:00`);
+  }
 
-  return copyAppointment(created);
+  return slots;
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  await delay(MOCK_LATENCY_MS);
-
+  const appointments = await getAppointments();
   const today = formatDate(0);
   const todayAppointments = appointments.filter(
     (appointment) =>

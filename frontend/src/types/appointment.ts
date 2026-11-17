@@ -14,6 +14,14 @@ export interface Appointment {
   notes?: string;
 }
 
+export interface ServiceOption {
+  id: string;
+  name: string;
+  durationMinutes: number;
+  price: number;
+  description: string;
+}
+
 export interface DashboardStats {
   todayAppointments: number;
   confirmedAppointments: number;
