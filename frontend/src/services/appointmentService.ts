@@ -112,6 +112,8 @@ let appointments: Appointment[] = [
 const delay = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
+let idSequence = 0;
+
 const copyAppointment = (appointment: Appointment): Appointment => ({
   ...appointment,
 });
@@ -138,6 +140,23 @@ export async function updateAppointmentStatus(
   );
 
   return copyAppointment(updated);
+}
+
+export async function createAppointment(
+  newAppointmentData: Omit<Appointment, "id" | "createdAt">,
+): Promise<Appointment> {
+  await delay(MOCK_LATENCY_MS);
+
+  idSequence += 1;
+  const created: Appointment = {
+    ...newAppointmentData,
+    id: `apt-${Date.now().toString()}-${idSequence}`,
+    createdAt: new Date().toISOString(),
+  };
+
+  appointments = [...appointments, created];
+
+  return copyAppointment(created);
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {

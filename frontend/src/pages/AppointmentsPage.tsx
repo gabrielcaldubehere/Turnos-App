@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import StatusBadge from "../components/common/StatusBadge";
+import CreateAppointmentModal from "../components/modals/CreateAppointmentModal";
 import Icon from "../components/ui/Icon";
 import {
   getAppointments,
@@ -13,6 +14,7 @@ function AppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -32,6 +34,14 @@ function AppointmentsPage() {
       active = false;
     };
   }, []);
+
+  const closeModal = useCallback(() => setIsModalOpen(false), []);
+
+  const handleAppointmentCreated = (created: Appointment) => {
+    setAppointments((current) => [...current, created]);
+    setError(null);
+    closeModal();
+  };
 
   const handleConfirm = async (id: string) => {
     setUpdatingId(id);
@@ -62,10 +72,20 @@ function AppointmentsPage() {
             Consultá y organizá la agenda de tu negocio.
           </p>
         </div>
-        <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 shadow-card">
-          <Icon name="calendar" className="h-4 w-4 text-sage-700" />
-          {appointments.length} turnos
-        </span>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 shadow-card">
+            <Icon name="calendar" className="h-4 w-4 text-sage-700" />
+            {appointments.length} turnos
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-sage-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sage-700"
+          >
+            <Icon name="plus" className="h-4 w-4" />
+            Nuevo Turno
+          </button>
+        </div>
       </header>
 
       {error && (
@@ -147,6 +167,12 @@ function AppointmentsPage() {
           </table>
         </div>
       )}
+
+      <CreateAppointmentModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        onAppointmentCreated={handleAppointmentCreated}
+      />
     </section>
   );
 }
