@@ -13,7 +13,9 @@ export type IconName =
   | "wallet"
   | "plus"
   | "close"
-  | "search";
+  | "search"
+  | "logout"
+  | "arrow-right";
 
 type IconProps = {
   name: IconName;
@@ -88,6 +90,13 @@ const iconPaths: Record<IconName, ReactNode> = {
       <path d="m20 20-3.5-3.5" />
     </>
   ),
+  logout: (
+    <>
+      <path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4" />
+      <path d="M15 8l4 4-4 4M19 12H9" />
+    </>
+  ),
+  "arrow-right": <path d="M4 12h16m-6-6 6 6-6 6" />,
 };
 
 function Icon({ name, className = "h-5 w-5" }: IconProps) {

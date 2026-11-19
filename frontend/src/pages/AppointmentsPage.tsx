@@ -110,6 +110,8 @@ function AppointmentsPage() {
       const matchesSearch =
         !query ||
         appointment.clientName.toLowerCase().includes(query) ||
+        appointment.clientPhone.includes(query) ||
+        (appointment.email?.toLowerCase().includes(query) ?? false) ||
         appointment.serviceName.toLowerCase().includes(query);
       const matchesStatus =
         statusFilter === "all" || appointment.status === statusFilter;
@@ -266,6 +268,8 @@ function AppointmentsPage() {
                   <th scope="col" className="px-5 py-3 font-medium">Horario</th>
                   <th scope="col" className="px-5 py-3 font-medium">Fecha</th>
                   <th scope="col" className="px-5 py-3 font-medium">Cliente</th>
+                  <th scope="col" className="px-5 py-3 font-medium">Email</th>
+                  <th scope="col" className="px-5 py-3 font-medium">Edad</th>
                   <th scope="col" className="px-5 py-3 font-medium">Profesional</th>
                   <th scope="col" className="px-5 py-3 font-medium">Servicio</th>
                   <th scope="col" className="px-5 py-3 font-medium">Precio</th>
@@ -276,7 +280,7 @@ function AppointmentsPage() {
               <tbody className="divide-y divide-zinc-100">
                 {filteredAppointments.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-5 py-14 text-center">
+                    <td colSpan={10} className="px-5 py-14 text-center">
                       <div className="mx-auto flex max-w-sm flex-col items-center gap-3">
                         <span className="flex h-11 w-11 items-center justify-center rounded-full bg-zinc-100 text-zinc-400">
                           <Icon name="search" className="h-5 w-5" />
@@ -317,8 +321,28 @@ function AppointmentsPage() {
                         <td className="whitespace-nowrap px-5 py-4 text-zinc-500">
                           {formatDate(appointment.date)}
                         </td>
-                        <td className="whitespace-nowrap px-5 py-4 text-zinc-700">
-                          {appointment.clientName}
+                        <td className="px-5 py-4">
+                          <span className="block font-medium text-zinc-800">
+                            {appointment.clientName}
+                          </span>
+                          <span className="mt-0.5 block text-xs tabular-nums text-zinc-400">
+                            {appointment.clientPhone}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
+                          {appointment.email ? (
+                            <a
+                              href={`mailto:${appointment.email}`}
+                              className="text-sage-700 underline decoration-sage-300 underline-offset-2 hover:text-sage-800"
+                            >
+                              {appointment.email}
+                            </a>
+                          ) : (
+                            <span className="text-zinc-300">—</span>
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-5 py-4 tabular-nums text-zinc-700">
+                          {appointment.age ?? "—"}
                         </td>
                         <td className="whitespace-nowrap px-5 py-4 text-zinc-700">
                           {appointment.professionalName}

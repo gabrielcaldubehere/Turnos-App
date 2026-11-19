@@ -3,12 +3,13 @@ import { useParams } from "react-router-dom";
 import Icon from "../components/ui/Icon";
 import {
   createAppointment,
-  getAvailableSlots,
   getServices,
+  getSlotsForDate,
   getTodayDate,
 } from "../services/appointmentService";
 import type { Appointment, ServiceOption } from "../types/appointment";
 import { formatBusinessName, formatCurrency, formatDate } from "../utils/format";
+import type { TimeSlot } from "../utils/time";
 
 type StepHeaderProps = {
   number: number;
@@ -43,12 +44,14 @@ function BookingPage() {
     null,
   );
   const [date, setDate] = useState(today);
-  const [slots, setSlots] = useState<string[]>([]);
+  const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [slotsVersion, setSlotsVersion] = useState(0);
   const [loadingSlots, setLoadingSlots] = useState(true);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [age, setAge] = useState("");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +79,7 @@ function BookingPage() {
   useEffect(() => {
     let active = true;
 
-    getAvailableSlots(date)
+    getSlotsForDate(date)
       .then((data) => {
         if (active) setSlots(data);
       })
@@ -118,8 +121,21 @@ function BookingPage() {
       setError("Elegí un horario disponible.");
       return;
     }
+    if (slots.find((slot) => slot.time === selectedTime)?.occupied) {
+      setError("Ese horario ya está ocupado. Elegí otro.");
+      return;
+    }
     if (!clientName.trim() || !clientPhone.trim()) {
       setError("Completá tu nombre y tu teléfono para continuar.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("Ingresá un email válido para continuar.");
+      return;
+    }
+    const parsedAge = Number(age);
+    if (!Number.isInteger(parsedAge) || parsedAge < 1 || parsedAge > 120) {
+      setError("Ingresá una edad válida (entre 1 y 120 años).");
       return;
     }
 
@@ -129,19 +145,28 @@ function BookingPage() {
       const created = await createAppointment({
         clientName: clientName.trim(),
         clientPhone: clientPhone.trim(),
+        email: email.trim(),
+        age: parsedAge,
         professionalName: "Por asignar",
-        serviceName: selectedService.name,
+        serviceIds: [selectedService.id],
         date,
         time: selectedTime,
         status: "pending",
-        price: selectedService.price,
         notes: notes.trim() || undefined,
       });
 
-      setSlots((current) => current.filter((slot) => slot !== selectedTime));
+      setSlots((current) =>
+        current.map((slot) =>
+          slot.time === selectedTime ? { ...slot, occupied: true } : slot,
+        ),
+      );
       setConfirmation(created);
-    } catch {
-      setError("No se pudo completar la reserva. Intentá nuevamente.");
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "No se pudo completar la reserva. Intentá nuevamente.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -152,6 +177,8 @@ function BookingPage() {
     setSelectedServiceId(null);
     setClientName("");
     setClientPhone("");
+    setEmail("");
+    setAge("");
     setNotes("");
     setError(null);
     updateDate(getTodayDate());
@@ -197,8 +224,20 @@ function BookingPage() {
               </div>
               <div className="flex items-center justify-between gap-4 py-3">
                 <dt className="text-zinc-500">Teléfono</dt>
-                <dd className="text-right font-medium text-zinc-900">
+                <dd className="text-right font-medium tabular-nums text-zinc-900">
                   {confirmation.clientPhone}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-4 py-3">
+                <dt className="text-zinc-500">Email</dt>
+                <dd className="break-all text-right font-medium text-zinc-900">
+                  {confirmation.email}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-4 py-3">
+                <dt className="text-zinc-500">Edad</dt>
+                <dd className="text-right font-medium tabular-nums text-zinc-900">
+                  {confirmation.age}
                 </dd>
               </div>
               {confirmation.notes && (
@@ -326,7 +365,7 @@ function BookingPage() {
         <StepHeader
           number={2}
           title="Fecha y horario"
-          description="Los horarios se actualizan según la disponibilidad real."
+          description="Los horarios en gris ya están ocupados."
         />
 
         <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -364,24 +403,34 @@ function BookingPage() {
             ) : (
               <div className="flex flex-wrap gap-2" role="group" aria-label="Horarios disponibles">
                 {slots.map((slot) => {
-                  const isSelected = selectedTime === slot;
+                  const isSelected = selectedTime === slot.time;
 
                   return (
                     <button
-                      key={slot}
+                      key={slot.time}
                       type="button"
+                      disabled={slot.occupied}
                       onClick={() => {
-                        setSelectedTime(slot);
+                        if (slot.occupied) return;
+                        setSelectedTime(slot.time);
                         setError(null);
                       }}
                       aria-pressed={isSelected}
+                      aria-label={slot.occupied ? `${slot.time} Ocupado` : slot.time}
                       className={`rounded-lg border px-3 py-2 text-sm font-medium tabular-nums transition ${
-                        isSelected
-                          ? "border-sage-600 bg-sage-600 text-white shadow-sm"
-                          : "border-zinc-200 bg-white text-zinc-700 hover:border-sage-300 hover:bg-sage-50"
+                        slot.occupied
+                          ? "cursor-not-allowed border-zinc-100 bg-zinc-100 text-zinc-400"
+                          : isSelected
+                            ? "border-sage-600 bg-sage-600 text-white shadow-sm"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:border-sage-300 hover:bg-sage-50"
                       }`}
                     >
-                      {slot}
+                      {slot.time}
+                      {slot.occupied && (
+                        <span className="ml-1 text-[10px] font-normal">
+                          Ocupado
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -421,7 +470,7 @@ function BookingPage() {
               htmlFor="client-phone"
               className="mb-1.5 block text-xs font-medium text-zinc-700"
             >
-              Teléfono
+              Teléfono <span className="font-normal text-rose-500">*</span>
             </label>
             <input
               id="client-phone"
@@ -429,6 +478,47 @@ function BookingPage() {
               value={clientPhone}
               onChange={(event) => setClientPhone(event.target.value)}
               placeholder="Ej. +54 9 11 5555-0101"
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-sage-500 focus:ring-2 focus:ring-sage-500/25"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label
+              htmlFor="client-email"
+              className="mb-1.5 block text-xs font-medium text-zinc-700"
+            >
+              Email
+            </label>
+            <input
+              id="client-email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="Ej. maria@ejemplo.com"
+              autoComplete="email"
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-sage-500 focus:ring-2 focus:ring-sage-500/25"
+            />
+            <p className="mt-1 text-xs text-zinc-400">
+              Lo usamos para enviarte la confirmación.
+            </p>
+          </div>
+          <div>
+            <label
+              htmlFor="client-age"
+              className="mb-1.5 block text-xs font-medium text-zinc-700"
+            >
+              Edad
+            </label>
+            <input
+              id="client-age"
+              type="number"
+              min={1}
+              max={120}
+              value={age}
+              onChange={(event) => setAge(event.target.value)}
+              placeholder="Ej. 32"
               className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-sage-500 focus:ring-2 focus:ring-sage-500/25"
             />
           </div>

@@ -1,12 +1,23 @@
 import { Navigate, Route } from "react-router-dom";
 
+import RequireRole from "../auth/RequireRole";
 import PendingPage from "../components/common/PendingPage";
 import AppLayout from "../layouts/AppLayout";
+import AdminLoginPage from "../pages/AdminLoginPage";
 import AppointmentsPage from "../pages/AppointmentsPage";
 import DashboardPage from "../pages/DashboardPage";
 
 const adminRoutes = [
-  <Route key="admin" path="/admin" element={<AppLayout />}>
+  <Route key="admin-login" path="/admin/login" element={<AdminLoginPage />} />,
+  <Route
+    key="admin"
+    path="/admin"
+    element={
+      <RequireRole role="admin" redirectTo="/admin/login">
+        <AppLayout />
+      </RequireRole>
+    }
+  >
     <Route index element={<Navigate to="dashboard" replace />} />
     <Route path="dashboard" element={<DashboardPage />} />
     <Route path="appointments" element={<AppointmentsPage />} />

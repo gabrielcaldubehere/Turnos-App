@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import Logo from "../common/Logo";
 import Icon, { type IconName } from "../ui/Icon";
 
 const navigationItems: { label: string; to: string; icon: IconName }[] = [
@@ -13,14 +14,8 @@ const navigationItems: { label: string; to: string; icon: IconName }[] = [
 function Sidebar() {
   return (
     <aside className="w-full border-b border-zinc-200 bg-white px-3 py-4 lg:w-64 lg:border-b-0 lg:border-r lg:px-4 lg:py-5">
-      <div className="flex items-center gap-3 border-b border-zinc-100 px-2 pb-5 lg:px-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sage-500 text-white shadow-card">
-          <Icon name="dashboard" className="h-5 w-5" />
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-zinc-900">Turnos AI</p>
-          <p className="truncate text-xs text-zinc-400">Panel administrativo</p>
-        </div>
+      <div className="flex items-center border-b border-zinc-100 px-2 pb-5 lg:px-3">
+        <Logo subtitle="Panel administrativo" />
       </div>
 
       <nav aria-label="Navegación principal" className="mt-4">

@@ -1,9 +1,11 @@
 import type {
   Appointment,
+  AppointmentCreate,
   AppointmentStatus,
   DashboardStats,
   ServiceOption,
 } from "../types/appointment";
+import { buildSlotAvailability, type TimeSlot } from "../utils/time";
 
 const API_URL = "http://localhost:8000/api";
 const JSON_HEADERS: HeadersInit = { "Content-Type": "application/json" };
@@ -70,8 +72,35 @@ export async function getAppointments(): Promise<Appointment[]> {
   return request<Appointment[]>("/appointments");
 }
 
+export async function getAppointmentsByEmail(email: string): Promise<Appointment[]> {
+  return request<Appointment[]>(
+    `/appointments?email=${encodeURIComponent(email)}`,
+  );
+}
+
+export async function loginAdmin(
+  username: string,
+  password: string,
+): Promise<{ role: "admin"; token: string }> {
+  return request("/auth/admin/login", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function loginClient(
+  email: string,
+): Promise<{ role: "client"; email: string; token: string }> {
+  return request("/auth/client/login", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ email }),
+  });
+}
+
 export async function createAppointment(
-  newAppointmentData: Omit<Appointment, "id" | "createdAt">,
+  newAppointmentData: AppointmentCreate,
 ): Promise<Appointment> {
   return request<Appointment>(
     "/appointments",
@@ -98,25 +127,9 @@ export async function updateAppointmentStatus(
   );
 }
 
-export async function getAvailableSlots(date: string): Promise<string[]> {
+export async function getSlotsForDate(date: string): Promise<TimeSlot[]> {
   const appointments = await getAppointments();
-
-  const occupiedHours = new Set(
-    appointments
-      .filter(
-        (appointment) =>
-          appointment.date === date && appointment.status !== "cancelled",
-      )
-      .map((appointment) => appointment.time.slice(0, 2)),
-  );
-
-  const slots: string[] = [];
-  for (let hour = 9; hour <= 18; hour += 1) {
-    const hourLabel = String(hour).padStart(2, "0");
-    if (!occupiedHours.has(hourLabel)) slots.push(`${hourLabel}:00`);
-  }
-
-  return slots;
+  return buildSlotAvailability(date, appointments);
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {

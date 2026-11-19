@@ -1,119 +1,37 @@
-from datetime import date as Date, datetime, timedelta, timezone
-from enum import Enum
-from itertools import count
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, Query, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, Field
-from pydantic.alias_generators import to_camel
+from sqlalchemy.orm import Session
+
+from database import get_db
+from schemas import (
+    AdminLogin,
+    Appointment,
+    AppointmentCreate,
+    AppointmentStatusUpdate,
+    AuthResponse,
+    ClientLogin,
+    ServiceOption,
+)
+from services import (
+    create_appointment,
+    init_db,
+    list_appointments,
+    list_services,
+    login_admin,
+    login_client,
+    update_appointment_status,
+)
 
 
-class CamelModel(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
 
 
-class AppointmentStatus(str, Enum):
-    PENDING = "pending"
-    CONFIRMED = "confirmed"
-    CANCELLED = "cancelled"
-    COMPLETED = "completed"
-
-
-class ServiceOption(CamelModel):
-    id: str
-    name: str
-    duration_minutes: int = Field(gt=0)
-    price: int = Field(ge=0)
-    description: str
-
-
-class AppointmentCreate(CamelModel):
-    client_name: str = Field(min_length=1, max_length=120)
-    client_phone: str = Field(min_length=1, max_length=40)
-    professional_name: str = Field(default="Por asignar", max_length=120)
-    service_name: str = Field(min_length=1, max_length=120)
-    date: Date
-    time: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
-    status: AppointmentStatus = AppointmentStatus.PENDING
-    price: int = Field(ge=0)
-    notes: str | None = Field(default=None, max_length=500)
-
-
-class Appointment(AppointmentCreate):
-    id: str
-    created_at: datetime
-
-
-class AppointmentStatusUpdate(CamelModel):
-    status: AppointmentStatus
-
-
-def date_from_today(offset_days: int) -> Date:
-    return datetime.now().date() + timedelta(days=offset_days)
-
-
-services: list[ServiceOption] = [
-    ServiceOption(
-        id="srv-limpieza-facial",
-        name="Limpieza facial",
-        duration_minutes=60,
-        price=45000,
-        description="Limpieza profunda, exfoliación e hidratación para una piel radiante.",
-    ),
-    ServiceOption(
-        id="srv-corte-peinado",
-        name="Corte y peinado",
-        duration_minutes=45,
-        price=38000,
-        description="Corte a medida con asesoría de estilo y peinado final.",
-    ),
-    ServiceOption(
-        id="srv-manicura",
-        name="Manicura",
-        duration_minutes=45,
-        price=32000,
-        description="Cuidado de uñas, cutículas y esmaltado de larga duración.",
-    ),
-    ServiceOption(
-        id="srv-masaje-relajante",
-        name="Masaje relajante",
-        duration_minutes=90,
-        price=62000,
-        description="Masaje corporal integral con aceites esenciales para liberar tensión.",
-    ),
-]
-
-appointments: list[Appointment] = [
-    Appointment(
-        id="apt-1001",
-        created_at=datetime.now(timezone.utc),
-        client_name="María González",
-        client_phone="+54 9 11 5555-0101",
-        professional_name="Ana Ruiz",
-        service_name="Limpieza facial",
-        date=date_from_today(0),
-        time="09:00",
-        status=AppointmentStatus.CONFIRMED,
-        price=45000,
-        notes="Prefiere atención en horario de mañana.",
-    ),
-    Appointment(
-        id="apt-1002",
-        created_at=datetime.now(timezone.utc),
-        client_name="Carlos Rodríguez",
-        client_phone="+54 9 11 5555-0102",
-        professional_name="Lucía Torres",
-        service_name="Corte y peinado",
-        date=date_from_today(0),
-        time="11:30",
-        status=AppointmentStatus.PENDING,
-        price=38000,
-    ),
-]
-
-_id_counter = count(start=1009)
-
-app = FastAPI(title="Turnos AI API", version="0.1.0")
+app = FastAPI(title="Turnos AI API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -129,14 +47,27 @@ app.add_middleware(
 )
 
 
+@app.post("/api/auth/admin/login", response_model=AuthResponse)
+def post_admin_login(payload: AdminLogin) -> AuthResponse:
+    return login_admin(payload)
+
+
+@app.post("/api/auth/client/login", response_model=AuthResponse)
+def post_client_login(payload: ClientLogin) -> AuthResponse:
+    return login_client(payload)
+
+
 @app.get("/api/services", response_model=list[ServiceOption])
-def get_services() -> list[ServiceOption]:
-    return services
+def get_services(db: Session = Depends(get_db)) -> list[ServiceOption]:
+    return list_services(db)
 
 
 @app.get("/api/appointments", response_model=list[Appointment])
-def get_appointments() -> list[Appointment]:
-    return appointments
+def get_appointments(
+    email: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> list[Appointment]:
+    return list_appointments(db, email)
 
 
 @app.post(
@@ -144,28 +75,16 @@ def get_appointments() -> list[Appointment]:
     response_model=Appointment,
     status_code=status.HTTP_201_CREATED,
 )
-def create_appointment(payload: AppointmentCreate) -> Appointment:
-    appointment = Appointment(
-        id=f"apt-{next(_id_counter)}",
-        created_at=datetime.now(timezone.utc),
-        **payload.model_dump(),
-    )
-    appointments.append(appointment)
-    return appointment
+def post_appointment(
+    payload: AppointmentCreate, db: Session = Depends(get_db)
+) -> Appointment:
+    return create_appointment(db, payload)
 
 
 @app.patch("/api/appointments/{appointment_id}/status", response_model=Appointment)
-def update_appointment_status(
+def patch_appointment_status(
     appointment_id: str,
     payload: AppointmentStatusUpdate,
+    db: Session = Depends(get_db),
 ) -> Appointment:
-    for index, appointment in enumerate(appointments):
-        if appointment.id == appointment_id:
-            updated = appointment.model_copy(update={"status": payload.status})
-            appointments[index] = updated
-            return updated
-
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"No se encontró el turno con id '{appointment_id}'",
-    )
+    return update_appointment_status(db, appointment_id, payload)
