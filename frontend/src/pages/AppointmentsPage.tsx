@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import StatusBadge from "../components/common/StatusBadge";
 import CreateAppointmentModal from "../components/modals/CreateAppointmentModal";
+import RescheduleAppointmentModal from "../components/modals/RescheduleAppointmentModal";
 import Icon, { type IconName } from "../components/ui/Icon";
 import {
   getAppointments,
@@ -73,6 +74,7 @@ function AppointmentsPage() {
   const [justUpdatedId, setJustUpdatedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [rescheduling, setRescheduling] = useState<Appointment | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -157,6 +159,19 @@ function AppointmentsPage() {
     } finally {
       setUpdatingId(null);
     }
+  };
+
+  const handleAppointmentRescheduled = (updated: Appointment) => {
+    setAppointments((current) =>
+      current.map((appointment) =>
+        appointment.id === updated.id ? updated : appointment,
+      ),
+    );
+    setRescheduling(null);
+    setError(null);
+    if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+    setJustUpdatedId(updated.id);
+    feedbackTimeout.current = setTimeout(() => setJustUpdatedId(null), 1400);
   };
 
   return (
@@ -261,7 +276,7 @@ function AppointmentsPage() {
             </div>
           </div>
 
-          <div className="surface overflow-x-auto">
+          <div className="surface hidden overflow-x-auto md:block">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-zinc-100 bg-zinc-50/70 text-xs uppercase tracking-wide text-zinc-500">
                 <tr>
@@ -372,6 +387,17 @@ function AppointmentsPage() {
                             </span>
                           ) : actions.length > 0 ? (
                             <div className="flex flex-wrap gap-2">
+                              {(appointment.status === "pending" ||
+                                appointment.status === "confirmed") && (
+                                <button
+                                  type="button"
+                                  onClick={() => setRescheduling(appointment)}
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-semibold text-zinc-700 transition hover:border-sage-300 hover:bg-sage-50"
+                                >
+                                  <Icon name="clock" className="h-3.5 w-3.5" />
+                                  Reprogramar
+                                </button>
+                              )}
                               {actions.map((action) => (
                                 <button
                                   key={action.status}
@@ -403,6 +429,125 @@ function AppointmentsPage() {
               </tbody>
             </table>
           </div>
+
+          <div className="space-y-3 md:hidden">
+            {filteredAppointments.length === 0 ? (
+              <div className="surface flex flex-col items-center gap-3 px-5 py-10 text-center">
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-zinc-100 text-zinc-400">
+                  <Icon name="search" className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-zinc-900">
+                    No se encontraron turnos con los filtros seleccionados
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Probá con otro texto o cambiá el estado.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"
+                >
+                  Limpiar filtros
+                </button>
+              </div>
+            ) : (
+              filteredAppointments.map((appointment) => {
+                const actions = quickActions[appointment.status];
+                const isUpdating = updatingId === appointment.id;
+                const wasUpdated = justUpdatedId === appointment.id;
+
+                return (
+                  <div key={appointment.id} className="surface space-y-3 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="break-words font-semibold text-zinc-900">
+                          {appointment.clientName}
+                        </p>
+                        <p className="mt-0.5 text-xs tabular-nums text-zinc-500">
+                          {formatDate(appointment.date)} · {appointment.time} hs
+                        </p>
+                      </div>
+                      <StatusBadge status={appointment.status} />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="col-span-2">
+                        <span className="text-zinc-500">Servicio</span>
+                        <p className="break-words font-medium text-zinc-800">
+                          {appointment.serviceName}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-zinc-500">Profesional</span>
+                        <p className="break-words text-zinc-800">
+                          {appointment.professionalName}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-zinc-500">Precio</span>
+                        <p className="tabular-nums text-zinc-800">
+                          {formatCurrency(appointment.price)}
+                        </p>
+                      </div>
+                      <div className="col-span-2 break-all">
+                        <span className="text-zinc-500">Contacto</span>
+                        <p className="text-zinc-800">
+                          {appointment.clientPhone}
+                          {appointment.email ? ` · ${appointment.email}` : ""}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 border-t border-zinc-100 pt-3">
+                      {isUpdating ? (
+                        <span className="inline-flex items-center gap-2 text-xs font-medium text-zinc-500">
+                          <span
+                            className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-sage-500 border-t-transparent"
+                            aria-hidden="true"
+                          />
+                          Actualizando...
+                        </span>
+                      ) : wasUpdated ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-sage-700">
+                          <Icon name="check" className="h-3.5 w-3.5" />
+                          Actualizado
+                        </span>
+                      ) : (
+                        <>
+                          {(appointment.status === "pending" ||
+                            appointment.status === "confirmed") && (
+                            <button
+                              type="button"
+                              onClick={() => setRescheduling(appointment)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"
+                            >
+                              <Icon name="clock" className="h-3.5 w-3.5" />
+                              Reprogramar
+                            </button>
+                          )}
+                          {actions.map((action) => (
+                            <button
+                              key={action.status}
+                              type="button"
+                              onClick={() =>
+                                handleStatusChange(appointment.id, action.status)
+                              }
+                              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${action.className}`}
+                            >
+                              <Icon name={action.icon} className="h-3.5 w-3.5" />
+                              {action.label}
+                            </button>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </>
       )}
 
@@ -410,6 +555,12 @@ function AppointmentsPage() {
         isOpen={isModalOpen}
         onClose={closeModal}
         onAppointmentCreated={handleAppointmentCreated}
+      />
+      <RescheduleAppointmentModal
+        key={rescheduling?.id ?? "closed"}
+        appointment={rescheduling}
+        onClose={() => setRescheduling(null)}
+        onUpdated={handleAppointmentRescheduled}
       />
     </section>
   );

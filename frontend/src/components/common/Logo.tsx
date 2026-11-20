@@ -11,7 +11,7 @@ function Logo({ showText = true, className = "", subtitle }: LogoProps) {
         viewBox="0 0 40 40"
         className="h-9 w-9 shrink-0 drop-shadow-sm"
         role="img"
-        aria-label="Turnos AI"
+        aria-label="Turnos App"
       >
         <defs>
           <linearGradient id="turnos-logo-gradient" x1="0" y1="0" x2="1" y2="1">
@@ -45,7 +45,7 @@ function Logo({ showText = true, className = "", subtitle }: LogoProps) {
       {showText && (
         <span className="min-w-0 leading-tight">
           <span className="block whitespace-nowrap text-base font-semibold tracking-tight text-zinc-900">
-            Turnos<span className="text-sage-600"> AI</span>
+            Turnos<span className="text-sage-600"> App</span>
           </span>
           {subtitle && (
             <span className="block whitespace-nowrap text-xs text-zinc-400">

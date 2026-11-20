@@ -1,8 +1,14 @@
 import type {
   Appointment,
   AppointmentCreate,
+  AppointmentReschedule,
   AppointmentStatus,
+  ClientRecord,
+  ClientUpdate,
   DashboardStats,
+  ProfessionalInput,
+  ProfessionalOption,
+  ServiceInput,
   ServiceOption,
 } from "../types/appointment";
 import { buildSlotAvailability, type TimeSlot } from "../utils/time";
@@ -68,6 +74,49 @@ export async function getServices(): Promise<ServiceOption[]> {
   return request<ServiceOption[]>("/services");
 }
 
+export async function createService(payload: ServiceInput): Promise<ServiceOption> {
+  return request<ServiceOption>(
+    "/services",
+    { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(payload) },
+    201,
+  );
+}
+
+export async function updateService(
+  id: string,
+  payload: ServiceInput,
+): Promise<ServiceOption> {
+  return request<ServiceOption>(`/services/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getProfessionals(): Promise<ProfessionalOption[]> {
+  return request<ProfessionalOption[]>("/professionals");
+}
+
+export async function createProfessional(
+  payload: ProfessionalInput,
+): Promise<ProfessionalOption> {
+  return request<ProfessionalOption>(
+    "/professionals",
+    { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(payload) },
+    201,
+  );
+}
+
+export async function updateProfessional(
+  id: string,
+  payload: ProfessionalInput,
+): Promise<ProfessionalOption> {
+  return request<ProfessionalOption>(
+    `/professionals/${encodeURIComponent(id)}`,
+    { method: "PATCH", headers: JSON_HEADERS, body: JSON.stringify(payload) },
+  );
+}
+
 export async function getAppointments(): Promise<Appointment[]> {
   return request<Appointment[]>("/appointments");
 }
@@ -78,35 +127,69 @@ export async function getAppointmentsByEmail(email: string): Promise<Appointment
   );
 }
 
-export async function loginAdmin(
+export type AuthResult = {
+  role: "admin" | "client";
+  token: string;
+  username?: string;
+  email?: string;
+};
+
+export async function login(
   username: string,
   password: string,
-): Promise<{ role: "admin"; token: string }> {
-  return request("/auth/admin/login", {
+): Promise<AuthResult> {
+  return request("/auth/login", {
     method: "POST",
     headers: JSON_HEADERS,
     body: JSON.stringify({ username, password }),
   });
 }
 
-export async function loginClient(
-  email: string,
-): Promise<{ role: "client"; email: string; token: string }> {
-  return request("/auth/client/login", {
+export async function registerClient(
+  username: string,
+  password: string,
+): Promise<AuthResult> {
+  return request("/auth/register", {
     method: "POST",
     headers: JSON_HEADERS,
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function loginAdmin(
+  username: string,
+  password: string,
+): Promise<AuthResult> {
+  return login(username, password);
+}
+
+export async function loginClient(
+  username: string,
+  password: string,
+): Promise<AuthResult> {
+  return login(username, password);
+}
+
+export async function getClientAppointments(
+  username: string,
+  token: string,
+): Promise<Appointment[]> {
+  return request(`/client/${encodeURIComponent(username)}/appointments`, {
+    headers: { ...JSON_HEADERS, Authorization: `Bearer ${token}` },
   });
 }
 
 export async function createAppointment(
   newAppointmentData: AppointmentCreate,
+  token?: string,
 ): Promise<Appointment> {
   return request<Appointment>(
     "/appointments",
     {
       method: "POST",
-      headers: JSON_HEADERS,
+      headers: token
+        ? { ...JSON_HEADERS, Authorization: `Bearer ${token}` }
+        : JSON_HEADERS,
       body: JSON.stringify(newAppointmentData),
     },
     201,
@@ -123,6 +206,35 @@ export async function updateAppointmentStatus(
       method: "PATCH",
       headers: JSON_HEADERS,
       body: JSON.stringify({ status }),
+    },
+  );
+}
+
+export async function rescheduleAppointment(
+  id: string,
+  payload: AppointmentReschedule,
+): Promise<Appointment> {
+  return request<Appointment>(`/appointments/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getClients(): Promise<ClientRecord[]> {
+  return request<ClientRecord[]>("/admin/clients");
+}
+
+export async function updateClient(
+  username: string,
+  payload: ClientUpdate,
+): Promise<ClientRecord> {
+  return request<ClientRecord>(
+    `/admin/clients/${encodeURIComponent(username)}`,
+    {
+      method: "PATCH",
+      headers: JSON_HEADERS,
+      body: JSON.stringify(payload),
     },
   );
 }

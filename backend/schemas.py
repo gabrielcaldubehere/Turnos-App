@@ -14,6 +14,17 @@ class CamelModel(BaseModel):
     )
 
 
+def validate_slot_time(value: str) -> str:
+    if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", value):
+        raise ValueError("El horario debe tener formato HH:MM de 24 horas.")
+    hour, minute = (int(part) for part in value.split(":"))
+    if minute not in (0, 30):
+        raise ValueError("Las franjas disponibles son de 30 minutos.")
+    if not 8 * 60 <= hour * 60 + minute <= 20 * 60:
+        raise ValueError("El horario debe estar entre 08:00 y 20:00.")
+    return value
+
+
 class AppointmentStatus(str, Enum):
     PENDING = "pending"
     CONFIRMED = "confirmed"
@@ -29,6 +40,26 @@ class ServiceOption(CamelModel):
     description: str
 
 
+class ServiceInput(CamelModel):
+    name: str = Field(min_length=1, max_length=120)
+    duration_minutes: int = Field(gt=0)
+    price: int = Field(ge=0)
+    description: str = Field(default="", max_length=500)
+
+
+class ProfessionalOption(CamelModel):
+    id: str
+    name: str
+    specialty: str | None = None
+    active: bool = True
+
+
+class ProfessionalInput(CamelModel):
+    name: str = Field(min_length=1, max_length=120)
+    specialty: str | None = Field(default=None, max_length=120)
+    active: bool = True
+
+
 class AppointmentCreate(CamelModel):
     client_name: str = Field(min_length=1, max_length=120)
     client_phone: str = Field(min_length=1, max_length=40)
@@ -36,6 +67,7 @@ class AppointmentCreate(CamelModel):
         min_length=5, max_length=120, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
     )
     age: int = Field(ge=1, le=120)
+    username: str | None = Field(default=None, max_length=64)
     professional_name: str = Field(default="Por asignar", max_length=120)
     service_ids: list[str] = Field(min_length=1)
     date: Date
@@ -46,14 +78,7 @@ class AppointmentCreate(CamelModel):
     @field_validator("time")
     @classmethod
     def validate_time(cls, value: str) -> str:
-        if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", value):
-            raise ValueError("El horario debe tener formato HH:MM de 24 horas.")
-        hour, minute = (int(part) for part in value.split(":"))
-        if minute not in (0, 30):
-            raise ValueError("Las franjas disponibles son de 30 minutos.")
-        if not 8 * 60 <= hour * 60 + minute <= 20 * 60:
-            raise ValueError("El horario debe estar entre 08:00 y 20:00.")
-        return value
+        return validate_slot_time(value)
 
 
 class AppointmentServiceRead(CamelModel):
@@ -70,6 +95,7 @@ class Appointment(CamelModel):
     client_phone: str
     email: str | None = None
     age: int | None = None
+    username: str | None = None
     professional_name: str
     services: list[AppointmentServiceRead]
     date: Date
@@ -94,18 +120,59 @@ class AppointmentStatusUpdate(CamelModel):
     status: AppointmentStatus
 
 
-class AdminLogin(CamelModel):
-    username: str = Field(min_length=1, max_length=120)
+class AppointmentReschedule(CamelModel):
+    date: Date
+    time: str
+    service_ids: list[str] = Field(min_length=1)
+
+    @field_validator("time")
+    @classmethod
+    def validate_time(cls, value: str) -> str:
+        return validate_slot_time(value)
+
+
+class LoginRequest(CamelModel):
+    username: str = Field(min_length=1, max_length=64)
     password: str = Field(min_length=1, max_length=120)
 
 
-class ClientLogin(CamelModel):
-    email: str = Field(
-        min_length=5, max_length=120, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+class AdminLogin(LoginRequest):
+    pass
+
+
+class ClientLogin(LoginRequest):
+    pass
+
+
+class ClientRegister(CamelModel):
+    username: str = Field(min_length=3, max_length=64)
+    password: str = Field(min_length=6, max_length=120)
+
+
+class ClientRead(CamelModel):
+    username: str
+    name: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    age: int | None = None
+    appointments_count: int = 0
+
+
+class ClientUpdate(CamelModel):
+    username: str | None = Field(default=None, min_length=3, max_length=64)
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    phone: str | None = Field(default=None, min_length=1, max_length=40)
+    email: str | None = Field(
+        default=None,
+        min_length=5,
+        max_length=120,
+        pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$",
     )
+    age: int | None = Field(default=None, ge=1, le=120)
 
 
 class AuthResponse(CamelModel):
     role: str
     token: str
+    username: str | None = None
     email: str | None = None

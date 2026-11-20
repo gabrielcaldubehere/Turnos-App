@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import useAuth from "../../auth/useAuth";
 import Logo from "../common/Logo";
+import ThemeToggle from "../common/ThemeToggle";
 import Icon from "../ui/Icon";
 
 type HeaderProps = {
@@ -13,7 +14,7 @@ function Header({ title }: HeaderProps) {
 
   const handleSignOut = () => {
     signOut();
-    navigate("/admin/login", { replace: true });
+    navigate("/main", { replace: true });
   };
 
   return (
@@ -26,17 +27,19 @@ function Header({ title }: HeaderProps) {
         </h1>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <span className="hidden rounded-full bg-sage-50 px-3 py-1 text-xs font-semibold text-sage-700 sm:inline-flex">
           Administrador
         </span>
+        <ThemeToggle compact />
         <button
           type="button"
           onClick={handleSignOut}
-          className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-900"
+          aria-label="Salir del panel"
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-zinc-200 px-2.5 text-xs font-semibold text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-900 sm:px-3"
         >
           <Icon name="logout" className="h-3.5 w-3.5" />
-          Salir
+          <span className="hidden sm:inline">Salir</span>
         </button>
       </div>
     </header>

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import heroImage from "../../assets/hero.png";
 import Logo from "./Logo";
+import ThemeToggle from "./ThemeToggle";
 
 type AuthShellProps = {
   eyebrow: string;
@@ -18,13 +19,13 @@ function AuthShell({ eyebrow, title, description, children }: AuthShellProps) {
           alt=""
           className="absolute inset-0 h-full w-full object-cover opacity-25"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-sage-700/95 via-sage-600/90 to-zinc-900/95" />
+        <div className="absolute inset-0 bg-gradient-to-br from-sage-700/95 via-sage-600/90 to-[#18181b]/95" />
         <div className="relative z-10 p-10">
           <Logo className="[&_span]:text-white" showText />
         </div>
         <div className="relative z-10 max-w-md p-10">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
-            Turnos AI
+            Turnos App
           </p>
           <h2 className="mt-4 text-4xl font-semibold leading-tight text-white">
             Tu agenda, siempre bajo control.
@@ -41,7 +42,10 @@ function AuthShell({ eyebrow, title, description, children }: AuthShellProps) {
         </div>
       </aside>
 
-      <main className="flex flex-1 items-center justify-center p-6 sm:p-10">
+      <main className="relative flex flex-1 items-center justify-center p-6 sm:p-10">
+        <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+          <ThemeToggle compact />
+        </div>
         <div className="w-full max-w-md">
           <div className="mb-8 lg:hidden">
             <Logo />

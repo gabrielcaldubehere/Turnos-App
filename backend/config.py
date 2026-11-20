@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     database_url: str = Field(..., alias="DATABASE_URL")
     admin_username: str = Field(default="admin", alias="ADMIN_USERNAME")
     admin_password: str = Field(default="admin", alias="ADMIN_PASSWORD")
+    secret_key: str = Field(default="dev-only-secret-change-me", alias="SECRET_KEY")
 
     @property
     def sqlalchemy_url(self) -> str:

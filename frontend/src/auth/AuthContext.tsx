@@ -1,10 +1,5 @@
-import {
-  useCallback,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
-import { loginAdmin, loginClient } from "../services/appointmentService";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { login, registerClient } from "../services/appointmentService";
 import AuthContext from "./authContextStore";
 import type { SessionUser } from "./types";
 
@@ -27,29 +22,57 @@ function readStoredUser(): SessionUser {
 function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser>(readStoredUser);
 
-  const persistUser = useCallback((nextUser: SessionUser) => {
+  const persistUser = useCallback((nextUser: SessionUser): SessionUser => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
     setUser(nextUser);
+    return nextUser;
   }, []);
 
-  const signInAdmin = useCallback(
+  const signIn = useCallback(
     async (username: string, password: string) => {
-      const response = await loginAdmin(username, password);
-      persistUser({ role: "admin", token: response.token });
-    },
-    [persistUser],
-  );
-
-  const signInClient = useCallback(
-    async (email: string) => {
-      const response = await loginClient(email);
-      persistUser({
-        role: "client",
+      const response = await login(username, password);
+      return persistUser({
+        role: response.role,
+        username: response.username,
         email: response.email,
         token: response.token,
       });
     },
     [persistUser],
+  );
+
+  const signUpClient = useCallback(
+    async (username: string, password: string) => {
+      const response = await registerClient(username, password);
+      return persistUser({
+        role: "client",
+        username: response.username,
+        token: response.token,
+      });
+    },
+    [persistUser],
+  );
+
+  const signInAdmin = useCallback(
+    async (username: string, password: string) => {
+      const session = await signIn(username, password);
+      if (session.role !== "admin") {
+        throw new Error("Las credenciales no corresponden a un administrador.");
+      }
+      return session;
+    },
+    [signIn],
+  );
+
+  const signInClient = useCallback(
+    async (username: string, password: string) => {
+      const session = await signIn(username, password);
+      if (session.role !== "client") {
+        throw new Error("Las credenciales no corresponden a un cliente.");
+      }
+      return session;
+    },
+    [signIn],
   );
 
   const signOut = useCallback(() => {
@@ -58,8 +81,15 @@ function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, signInAdmin, signInClient, signOut }),
-    [user, signInAdmin, signInClient, signOut],
+    () => ({
+      user,
+      signIn,
+      signUpClient,
+      signInAdmin,
+      signInClient,
+      signOut,
+    }),
+    [user, signIn, signUpClient, signInAdmin, signInClient, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

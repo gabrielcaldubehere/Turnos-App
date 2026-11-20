@@ -5,7 +5,7 @@ import Sidebar from "../components/layout/Sidebar";
 function AppLayout() {
   return (
     <div className="min-h-screen">
-      <Header title="Turnos AI" />
+      <Header title="Turnos App" />
 
       <div className="flex min-h-[calc(100vh-4rem)] flex-col lg:flex-row">
         <Sidebar />

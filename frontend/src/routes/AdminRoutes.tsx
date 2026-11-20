@@ -1,62 +1,29 @@
-import { Navigate, Route } from "react-router-dom";
+import { Route } from "react-router-dom";
 
 import RequireRole from "../auth/RequireRole";
-import PendingPage from "../components/common/PendingPage";
 import AppLayout from "../layouts/AppLayout";
-import AdminLoginPage from "../pages/AdminLoginPage";
 import AppointmentsPage from "../pages/AppointmentsPage";
+import ClientsAdminPage from "../pages/ClientsAdminPage";
 import DashboardPage from "../pages/DashboardPage";
+import ProfessionalsAdminPage from "../pages/ProfessionalsAdminPage";
+import ServicesAdminPage from "../pages/ServicesAdminPage";
 
 const adminRoutes = [
-  <Route key="admin-login" path="/admin/login" element={<AdminLoginPage />} />,
   <Route
     key="admin"
     path="/admin"
     element={
-      <RequireRole role="admin" redirectTo="/admin/login">
+      <RequireRole role="admin">
         <AppLayout />
       </RequireRole>
     }
   >
-    <Route index element={<Navigate to="dashboard" replace />} />
+    <Route index element={<DashboardPage />} />
     <Route path="dashboard" element={<DashboardPage />} />
     <Route path="appointments" element={<AppointmentsPage />} />
-    <Route
-      path="clients"
-      element={
-        <PendingPage
-          title="Clientes"
-          description="La gestión de clientes estará disponible en el próximo sprint."
-        />
-      }
-    />
-    <Route
-      path="professionals"
-      element={
-        <PendingPage
-          title="Profesionales"
-          description="La gestión de profesionales estará disponible en el próximo sprint."
-        />
-      }
-    />
-    <Route
-      path="services"
-      element={
-        <PendingPage
-          title="Servicios"
-          description="La gestión de servicios estará disponible en el próximo sprint."
-        />
-      }
-    />
-    <Route
-      path="settings"
-      element={
-        <PendingPage
-          title="Configuración"
-          description="La configuración del negocio estará disponible en el próximo sprint."
-        />
-      }
-    />
+    <Route path="clients" element={<ClientsAdminPage />} />
+    <Route path="professionals" element={<ProfessionalsAdminPage />} />
+    <Route path="services" element={<ServicesAdminPage />} />
   </Route>,
 ];
 

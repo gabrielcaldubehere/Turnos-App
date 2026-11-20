@@ -3,8 +3,10 @@ import type { SessionUser } from "./types";
 
 export type AuthContextValue = {
   user: SessionUser;
-  signInAdmin: (username: string, password: string) => Promise<void>;
-  signInClient: (email: string) => Promise<void>;
+  signIn: (username: string, password: string) => Promise<SessionUser>;
+  signUpClient: (username: string, password: string) => Promise<SessionUser>;
+  signInAdmin: (username: string, password: string) => Promise<SessionUser>;
+  signInClient: (username: string, password: string) => Promise<SessionUser>;
   signOut: () => void;
 };
 
