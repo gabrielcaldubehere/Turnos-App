@@ -11,13 +11,31 @@ Aplicación web para reservar turnos online en un negocio de servicios de bellez
 ## Estructura
 
 ```
-backend/   API FastAPI, modelos, esquemas y reglas de negocio
-frontend/  SPA con rutas públicas, panel de cliente y panel de administrador
+Turnos-App/
+├── backend/                # API REST en FastAPI + SQLAlchemy
+│   ├── config.py           # Configuración y normalización de DATABASE_URL
+│   ├── database.py         # Conexión a Supabase (PostgreSQL) y sesiones DB
+│   ├── models.py           # Modelos ORM (users, services, professionals, appointments, appointment_services)
+│   ├── schemas.py          # Esquemas Pydantic con serialización camelCase
+│   ├── security.py         # Hashing de contraseñas (PBKDF2) y tokens por rol
+│   ├── services.py         # Reglas de negocio, cálculos, seed y validación anti-solape
+│   ├── main.py             # Endpoints REST y ciclo de vida de la app
+│   ├── .env.example        # Plantilla de variables de entorno
+│   └── requirements.txt    # Dependencias Python
+│
+└── frontend/               # SPA en React + TypeScript + Tailwind v4
+    └── src/
+        ├── components/     # Logo SVG, rutas protegidas, modales y toggle Dark Mode
+        ├── context/        # Estado global de autenticación y tema
+        ├── pages/          # MainPage, ClientDashboard, AdminDashboard y vistas de gestión
+        ├── services/       # Capa de comunicación HTTP tipada con FastAPI
+        ├── types/          # Interfaces TypeScript
+        └── utils/          # Generación de franjas horarias y disponibilidad
 ```
 
 ## Flujos principales
 
-- **Reserva pública:** entrar en `/main`, elegir **Nuevo Turno** o **Ingresar**, seleccionar uno o más servicios, el profesional, la fecha/hora y completar los datos. En el modo *onboarding* se crea el usuario y la contraseña.
+- **Reserva pública:** entrar en `/main`, elegir **Nuevo Turno** o **Ingresar**, seleccionar uno o más servicios, el profesional, la fecha/hora y completar los datos. En el modo _onboarding_ se crea el usuario y la contraseña.
 - **Panel del cliente:** en `/client/:username` se listan los turnos propios con sus estados y se pueden reservar nuevos.
 - **Panel de administrador:** en `/admin` se gestionan turnos (confirmar/cancelar/completar y reprogramar), clientes (edición inline), servicios y profesionales. Las altas y modificaciones de servicios y profesionales impactan en el formulario de reserva cuando este se recarga (o al volver a enfocar la pestaña).
 - **Tema:** modo claro/oscuro con preferencia guardada en `localStorage`.
